@@ -1,15 +1,21 @@
 package com.example.bridge_driver;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
@@ -23,16 +29,29 @@ import android.content.IntentFilter;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.bridge_driver.Interfaces.ApiInterface;
 import com.example.bridge_driver.Service.TrackingService;
 import com.example.bridge_driver.Models.GpsRequest;
 import com.example.bridge_driver.Utils.SharedPrefHelper;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
 import android.widget.Toast;
+
+import static com.example.bridge_driver.App.CHANNEL_ID;
 
 
 public class Home extends AppCompatActivity {
@@ -56,8 +75,10 @@ public class Home extends AppCompatActivity {
     private SharedPrefHelper sharedPrefHelper;
     private ApiInterface apiService;
     private ProgressDialog progressBar;
-    double lati;
-    double longi;
+    FusedLocationProviderClient client;
+    private LocationCallback locationCallback;
+    double lat;
+    double lon;
 
     public static Home getInstance() {
         return mInstance;
@@ -71,12 +92,37 @@ public class Home extends AppCompatActivity {
         sharedPrefHelper = SharedPrefHelper.getInstance(this);
         mInstance = this;
         initViewsAndSet();
+        client = LocationServices.getFusedLocationProviderClient(this);
+        locationCallback = new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                Location location = locationResult.getLastLocation();
+                lat = location.getLatitude();
+                lon = location.getLongitude();
+                updateGps(lat,lon);
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Location").child(BUS_NO);
+                if (location != null) {
+                    ref.setValue(location);
+                }
+            }
+        };
         startService();
+        requestLocationUpdates();
         setProgressBar();
+    }
+    private void requestLocationUpdates() {
+        LocationRequest request = LocationRequest.create();
+        request.setInterval(10000);
+        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-        //registerReceiver(Receiver, new IntentFilter("GET_SIGNAL_STRENGTH"));
-        //updateGps(lat,log);
-        txtGpsLocation.setText("lat:" + lati + " , lon:" + longi);
+        int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        if (permission == PackageManager.PERMISSION_GRANTED) {
+            client.requestLocationUpdates(request, locationCallback , Looper.getMainLooper());
+        }
+    }
+    public void stopLocationUpdates() {
+        client.removeLocationUpdates(locationCallback);
+        Toast.makeText(getApplicationContext(), "Stopping Location Service", Toast.LENGTH_SHORT).show();
     }
 
     public void startService() {
@@ -88,12 +134,6 @@ public class Home extends AppCompatActivity {
         Intent serviceIntent = new Intent(this,TrackingService.class);
         stopService(serviceIntent);
     }
-    /*private void startTrackerService() {
-        Intent locationIntent = new Intent(this, TrackingService.class);
-        locationIntent.putExtra("Bus no", BUS_NO);
-        startService(locationIntent);
-        Toast.makeText(this, "Sharing Live Location", Toast.LENGTH_SHORT).show();
-    }*/
 
     private void initViewsAndSet() {
         imgDriver = (ImageView) findViewById(R.id.imgDriver);
@@ -160,7 +200,6 @@ public class Home extends AppCompatActivity {
         Log.d("BridgeDriver_ok", "logged out");
         // and remove user token
         sharedPrefHelper.addString(SharedPrefHelper.LOGIN_TOKEN, null);
-        stopService();
         finish();
     }
 
@@ -204,7 +243,7 @@ public class Home extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        startService();
+        requestLocationUpdates();
     }
 
     public void updateGps(final double lat, final double lon) {
@@ -223,34 +262,40 @@ public class Home extends AppCompatActivity {
     }
 
     @Nullable
-    private String getLocationName(double lat, double lon) {
-        Geocoder g = new Geocoder(this);
-        try {
-            Address address= g.getFromLocation(lat, lon, 1).get(0);
-            String address_line="";
-            int max_address=address.getMaxAddressLineIndex();
-            for(int i=0;i<max_address;i++){
+    private String getLocationName(double LATITUDE, double LONGITUDE) {
+            String strAdd = "";
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            try {
+                List<Address> addresses = geocoder.getFromLocation(LATITUDE, LONGITUDE, 1);
+                if (addresses != null) {
+                    Address returnedAddress = addresses.get(0);
+                    StringBuilder strReturnedAddress = new StringBuilder("");
 
-                address_line+=address.getAddressLine(i)+" ";
+                    for (int i = 0; i <= returnedAddress.getMaxAddressLineIndex(); i++) {
+                        strReturnedAddress.append(returnedAddress.getAddressLine(i)).append("\n");
+                    }
+                    strAdd = strReturnedAddress.toString();
+                    Log.w("Current address", strReturnedAddress.toString());
+                } else {
+                    Log.w("Current address", "No Address returned!");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.w("Current address", "Canont get Address!");
             }
-            Log.d("bts_ok","full address:"+address_line);
-            return address_line;
-        } catch (IOException | IndexOutOfBoundsException e) {
-            Log.d("bts_error", "cant get location name " + e.getMessage());
+            return strAdd;
         }
-        return null;
-    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopLocationUpdates();
         stopService();
     }
 
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        stopService();
     }
 
 }

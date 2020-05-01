@@ -168,7 +168,7 @@ public class LoginActivity extends AppCompatActivity {
                                                 i.putExtra(SharedPrefHelper.LOGIN_TRIP_TYPE, Trip);
                                                 startActivity(i);
                                                 Toast.makeText(LoginActivity.this, "Login Success", Toast.LENGTH_LONG).show();
-                                                finish();
+
                                             } else {
                                                 password.setError("Enter Correct Password");
                                             }
