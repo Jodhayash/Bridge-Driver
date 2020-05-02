@@ -167,8 +167,7 @@ public class LoginActivity extends AppCompatActivity {
                                                 i.putExtra(SharedPrefHelper.LOGIN_BUS_NO, no);
                                                 i.putExtra(SharedPrefHelper.LOGIN_TRIP_TYPE, Trip);
                                                 startActivity(i);
-                                                Toast.makeText(LoginActivity.this, "Login Success", Toast.LENGTH_LONG).show();
-
+                                                Toast.makeText(LoginActivity.this, "Login Success", Toast.LENGTH_SHORT).show();
                                             } else {
                                                 password.setError("Enter Correct Password");
                                             }
@@ -182,5 +181,10 @@ public class LoginActivity extends AppCompatActivity {
                         });
             }
         }
+}
+@Override
+public void onDestroy(){
+        super.onDestroy();
+
 }
 }

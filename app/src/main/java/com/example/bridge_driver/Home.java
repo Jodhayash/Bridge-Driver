@@ -2,11 +2,7 @@ package com.example.bridge_driver;
 
 import android.Manifest;
 import android.app.AlertDialog;
-import android.app.Fragment;
 import android.app.FragmentManager;
-import android.app.FragmentTransaction;
-import android.app.Notification;
-import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -18,23 +14,17 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+
 import android.widget.ImageView;
 import android.widget.TextView;
-
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
-import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.bridge_driver.Interfaces.ApiInterface;
 import com.example.bridge_driver.Service.TrackingService;
-import com.example.bridge_driver.Models.GpsRequest;
 import com.example.bridge_driver.Utils.SharedPrefHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -44,20 +34,15 @@ import com.google.android.gms.location.LocationServices;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.firebase.ui.firestore.FirestoreRecyclerAdapter;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-
 import android.widget.Toast;
-
-import static com.example.bridge_driver.App.CHANNEL_ID;
 
 
 public class Home extends AppCompatActivity {
 
-    public static String FRAG_PICK_TAG = ApiInterface.QRY_PICKED;
-    public static String FRAG_DROP_TAG = ApiInterface.QRY_DROPPED;
     public static String FRAG_IMAGE_DIALOG = "image_dialog";
     private static String DRIVER_NAME;
     private static String BUS_NO;
@@ -73,7 +58,6 @@ public class Home extends AppCompatActivity {
     private TextView txtGpsLocation;
     private CoordinatorLayout coordinatorLayout;
     private SharedPrefHelper sharedPrefHelper;
-    private ApiInterface apiService;
     private ProgressDialog progressBar;
     FusedLocationProviderClient client;
     private LocationCallback locationCallback;
@@ -101,6 +85,7 @@ public class Home extends AppCompatActivity {
                 lon = location.getLongitude();
                 updateGps(lat,lon);
                 DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Location").child(BUS_NO);
+                Toast.makeText(getApplicationContext(), "Sharing Live Location", Toast.LENGTH_SHORT).show();
                 if (location != null) {
                     ref.setValue(location);
                 }
@@ -165,28 +150,20 @@ public class Home extends AppCompatActivity {
 
     // handle pick up button click
     public void onPickClick(View v) {
-        /*final AtendDialogFrag dialogFrag = new AtendDialogFrag();
-        //dialogFrag.show(fm,FRAG_PICK_TAG);
-        FragmentTransaction ft = getFragmentManager().beginTransaction();
-        Fragment prev = getFragmentManager().findFragmentByTag(FRAG_DROP_TAG);
-        if (prev != null) {
-            ft.remove(prev).commit();
-        }
-        dialogFrag.show(ft, FRAG_PICK_TAG);*/
-
+        String st = "Pick";
+        Intent i = new Intent(Home.this, Attend.class);
+        i.putExtra("Bus no", BUS_NO);
+        i.putExtra("Status", st);
+        startActivity(i);
     }
 
     //handle drop button click
     public void onDropClick(View v) {
-        /*final AtendDialogFrag dialogFrag = new AtendDialogFrag();
-        //dialogFrag.show(fm,FRAG_DROP_TAG);
-        FragmentTransaction ft = getFragmentManager().beginTransaction();
-        Fragment prev = getFragmentManager().findFragmentByTag(FRAG_PICK_TAG);
-        if (prev != null) {
-            ft.remove(prev).commit();
-        }
-        dialogFrag.show(ft, FRAG_DROP_TAG);*/
-
+        String st = "Drop";
+        Intent i = new Intent(Home.this, Attend.class);
+        i.putExtra("Bus no", BUS_NO);
+        i.putExtra("Status", st);
+        startActivity(i);
     }
 
     //handle logout action
@@ -205,39 +182,24 @@ public class Home extends AppCompatActivity {
 
     private void logoutAlert() {
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(Home.this);
-
-        // Setting Dialog Title
         alertDialog.setTitle("Confirm Logout...");
-
-        // Setting Dialog Message
         alertDialog.setMessage("Make sure all kids are dropped and their dropping attendance is taken?");
-        ;
-
-        // Setting Positive "Yes" Button
         alertDialog.setPositiveButton("I am Sure", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 doLogout();
             }
         });
-
-        // Setting Negative "NO" Button
         alertDialog.setNegativeButton("Not Sure", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
             }
         });
-
-        // Showing Alert Message
         alertDialog.show();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // DON'T do this,as it stops sending gps data in background
-        // STOP-SERVICE only when driver has logged-out
-        // stopService(locationIntent);
-
     }
 
     @Override
@@ -295,7 +257,7 @@ public class Home extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        super.onBackPressed();
+        logoutAlert();
     }
 
 }

@@ -75,17 +75,13 @@ public class TrackingService extends Service {
                 .setSmallIcon((R.drawable.tracking_enabled))
                 .setContentIntent(pendingIntent)
                 .build();
-
-
         startForeground(1, notification);
         //stopSelf();
         return START_NOT_STICKY;
     }
 
-
     @Override
     public void onDestroy() {
         super.onDestroy();
-
     }
 }
