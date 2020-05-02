@@ -18,6 +18,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
@@ -31,10 +32,13 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.firebase.ui.firestore.FirestoreRecyclerAdapter;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.List;
 import java.util.Locale;
@@ -95,6 +99,7 @@ public class Home extends AppCompatActivity {
             }
         };
         startService();
+        Toast.makeText(getApplicationContext(), "Sharing Live Location", Toast.LENGTH_SHORT).show();
         requestLocationUpdates();
         setProgressBar();
     }
@@ -107,7 +112,6 @@ public class Home extends AppCompatActivity {
         if (permission == PackageManager.PERMISSION_GRANTED) {
             client.requestLocationUpdates(request, locationCallback , Looper.getMainLooper());
         }
-        Toast.makeText(getApplicationContext(), "Sharing Live Location", Toast.LENGTH_SHORT).show();
     }
     public void stopLocationUpdates() {
         client.removeLocationUpdates(locationCallback);
@@ -189,10 +193,23 @@ public class Home extends AppCompatActivity {
         alertDialog.setTitle("Confirm Logout...");
         alertDialog.setMessage("Make sure all kids are dropped and their dropping attendance is taken?");
         alertDialog.setPositiveButton("I am Sure", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) {
-                doLogout();
-            }
-        });
+            public void onClick(final DialogInterface dialog, int which) {
+                FirebaseFirestore ndb = FirebaseFirestore.getInstance();
+                ndb.collection("Students")
+                        .whereEqualTo("Bus_no", BUS_NO).whereEqualTo("InBus", true)
+                        .get()
+                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                if (task.getResult().size() == 0){
+                                    doLogout();
+                                }
+                                else {
+                                    Toast.makeText(getApplicationContext(), "Please Drop all students before Logging Out", Toast.LENGTH_SHORT).show();
+                                    dialog.cancel();
+                                }
+                            }
+        });}});
         alertDialog.setNegativeButton("Not Sure", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
