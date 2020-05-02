@@ -85,9 +85,12 @@ public class Home extends AppCompatActivity {
                 lon = location.getLongitude();
                 updateGps(lat,lon);
                 DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Location").child(BUS_NO);
-                Toast.makeText(getApplicationContext(), "Sharing Live Location", Toast.LENGTH_SHORT).show();
                 if (location != null) {
                     ref.setValue(location);
+                }
+                double sp = location.getSpeed();
+                if(sp>80){
+                    Toast.makeText(getApplicationContext(), "Speed Limit Crossed!", Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -104,6 +107,7 @@ public class Home extends AppCompatActivity {
         if (permission == PackageManager.PERMISSION_GRANTED) {
             client.requestLocationUpdates(request, locationCallback , Looper.getMainLooper());
         }
+        Toast.makeText(getApplicationContext(), "Sharing Live Location", Toast.LENGTH_SHORT).show();
     }
     public void stopLocationUpdates() {
         client.removeLocationUpdates(locationCallback);
